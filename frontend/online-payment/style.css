@@ -1,0 +1,588 @@
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap');
+
+:root {
+  --card-bg: #E4ECF9;
+  --blue: #414AFF;
+  --blue-hover: #2f38e0;
+  --text: #1a1a2e;
+  --muted: #515151;
+  --border: rgba(81, 81, 81, 0.55);
+  --input-bg: #E4ECF9;
+  --red: #e05c5c;
+  --label: #3a3a5c;
+  --shadow: 0 4px 24px rgba(65, 74, 255, 0.10);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  background: url('bg.png') center center / 100% 100% no-repeat fixed;
+  font-family: 'Onest', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  padding: 24px 16px 40px;
+  overflow-x: hidden;
+}
+
+/* ── Container ── */
+.container {
+  max-width: 620px;
+  margin: 0 auto;
+  background: transparent;
+  overflow: visible;
+  position: relative;
+  z-index: 0;
+}
+
+/* ── Header ── */
+h1 {
+  text-align: center;
+  color: #1a1a2e;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 2.6rem;
+  line-height: 1.1;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #444;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+/* ── Card logos ── */
+.card-logos {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: center;
+  background: #DEE9FD;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card-logo {
+  height: 40px;
+  width: 64px;
+  border: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.card-logo:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Section cards ── */
+.form-section {
+  background: #DEE9FD;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 18px;
+  padding: 22px 24px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+.section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 14px;
+}
+
+/* ── Form groups ── */
+.form-group {
+  margin-bottom: 11px;
+}
+
+label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 5px;
+  letter-spacing: 0.01em;
+}
+
+label .req {
+  color: var(--red);
+  margin-left: 2px;
+}
+
+/* ── Inputs ── */
+input[type="text"],
+input[type="email"] {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  font-size: 0.88rem;
+  font-family: 'Onest', sans-serif;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder {
+  color: #a0aabb;
+}
+
+input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(65, 74, 255, 0.12);
+}
+
+/* ── Select ── */
+select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  font-size: 0.88rem;
+  font-family: 'Onest', sans-serif;
+  color: var(--text);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23414AFF'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(65, 74, 255, 0.12);
+}
+
+/* ── Grid ── */
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Card number ── */
+.card-number-wrap {
+  position: relative;
+}
+
+.card-number-wrap input {
+  padding: 11px 14px;
+  width: 100%;
+}
+
+.card-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  min-height: 16px;
+  font-size: 0.7rem;
+}
+
+#cardTypeBadge {
+  display: none;
+  background: rgba(65, 74, 255, 0.1);
+  color: var(--blue);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(65, 74, 255, 0.25);
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+#cardValidIcon {
+  display: none;
+  font-weight: 700;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* ── Phone dropdown ── */
+.phone-wrap {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  overflow: visible;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.phone-wrap:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(65, 74, 255, 0.12);
+}
+
+#phoneFlag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 10px;
+  border-right: 1px solid rgba(81, 81, 81, 0.25);
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  min-width: 86px;
+  border-radius: 8px 0 0 8px;
+  transition: background 0.2s;
+}
+
+#phoneFlag .dial-sel {
+  font-weight: 700;
+  color: var(--blue);
+}
+
+#phoneFlag .arrow {
+  font-size: 0.58rem;
+  color: var(--blue);
+}
+
+#phoneFlag:hover {
+  background: rgba(65, 74, 255, 0.06);
+}
+
+.phone-wrap input#phoneInput {
+  border: none;
+  flex: 1;
+  padding: 11px 10px;
+  font-size: 0.88rem;
+  font-family: 'Onest', sans-serif;
+  color: var(--text);
+  outline: none;
+  background: transparent;
+  min-width: 0;
+}
+
+.phone-wrap input#phoneInput::placeholder {
+  color: #a0aabb;
+}
+
+#phoneDropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 99999;
+  background: #fff;
+  border: 1px solid #d0d8ee;
+  border-radius: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 250px;
+  box-shadow: 0 8px 32px rgba(65, 74, 255, 0.15);
+}
+
+.phone-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.phone-option:hover {
+  background: #eef2ff;
+}
+
+.phone-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #e0e8f4;
+  font-size: 0.8rem;
+  font-family: 'Onest', sans-serif;
+  outline: none;
+  background: #f5f8ff;
+  color: var(--text);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-radius: 10px 10px 0 0;
+}
+
+.phone-search::placeholder {
+  color: #a0aabb;
+}
+
+.opt-flag {
+  font-size: 0.95rem;
+}
+
+.opt-name {
+  flex: 1;
+}
+
+.opt-code {
+  color: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ── Email wrap ── */
+.email-wrap {
+  position: relative;
+}
+
+.email-wrap input {
+  padding-right: 38px;
+}
+
+.email-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--blue);
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+/* ── Address sub-label ── */
+.address-sub {
+  font-size: 0.67rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ── Errors ── */
+.error-msg {
+  color: var(--red);
+  font-size: 0.7rem;
+  margin-top: 4px;
+  display: none;
+  font-weight: 500;
+}
+
+.error-msg.visible {
+  display: block;
+}
+
+/* ── Submit button ── */
+.btn-submit {
+  display: block;
+  width: 100%;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  padding: 15px 26px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: 'Onest', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 18px rgba(65, 74, 255, 0.35);
+}
+
+.btn-submit:hover {
+  background: var(--blue-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(65, 74, 255, 0.45);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+.btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Success box ── */
+.success-box {
+  display: none;
+  background: #eafaf3;
+  border: 1.5px solid #b2e0cc;
+  border-radius: 12px;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+  font-size: 1rem;
+  color: #1a5c3a;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.success-box.visible {
+  display: block;
+}
+
+.success-box #txnId {
+  display: inline-block;
+  background: rgba(45, 160, 110, 0.12);
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a7a4a;
+}
+
+/* ── Scrollbar ── */
+#phoneDropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+#phoneDropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#phoneDropdown::-webkit-scrollbar-thumb {
+  background: #c0c8e8;
+  border-radius: 4px;
+}
+
+/* ── Tablet ── */
+@media (max-width: 768px) {
+  body {
+    padding: 20px 12px 36px;
+  }
+
+  .container {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  .form-section {
+    padding: 18px 16px 16px;
+    border-radius: 14px;
+  }
+
+  #phoneDropdown {
+    width: 220px;
+  }
+}
+
+/* ── Mobile ── */
+@media (max-width: 500px) {
+  body {
+    padding: 14px 10px 28px;
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .form-section {
+    padding: 14px 12px 14px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .section-heading {
+    font-size: 1.1rem;
+  }
+
+  .row-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  select {
+    font-size: 1rem;
+    padding: 11px 12px;
+  }
+
+  .card-number-wrap input {
+    font-size: 1rem;
+  }
+
+  .phone-wrap {
+    width: 100%;
+  }
+
+  .phone-wrap input#phoneInput {
+    font-size: 1rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  #phoneFlag {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 11px 8px;
+    min-width: 76px;
+    font-size: 0.78rem;
+  }
+
+  #phoneDropdown {
+    width: calc(100vw - 40px);
+    max-width: 280px;
+  }
+
+  .btn-submit {
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+
+  .card-logos {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .card-logo {
+    height: 32px;
+    width: 48px;
+  }
+
+  .email-wrap input {
+    font-size: 1rem;
+  }
+}
