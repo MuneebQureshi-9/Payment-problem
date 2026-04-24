@@ -201,15 +201,15 @@ app.post("/api/send-email", async (req, res) => {
 
     // 1️⃣  Email to the customer — payment confirmation
     const customerMailOptions = {
-      from: `"NextFiler Payments" <${process.env.EMAIL_USER}>`,
+      from: `"NextFiler" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: `Payment Confirmation — ${transaction_id}`,
+      subject: `Details Received — ${transaction_id}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;text-align:center;">
-          <h2 style="color:#4f46e5;">Payment Received ✅</h2>
+          <h2 style="color:#4f46e5;">Details Received ✅</h2>
           <p>Hi <strong>${name}</strong>,</p>
-          <p>Thank you for your payment. We have successfully received it.</p>
-          <p style="font-size: 16px; font-weight: bold; color: #333; margin: 20px 0;">Your order is currently in process.</p>
+          <p>Thank you, we have successfully received your details.</p>
+          <p style="font-size: 16px; font-weight: bold; color: #333; margin: 20px 0;">Your payment is currently in process.</p>
           <p style="color:#6b7280;font-size:12px;margin-top:30px;">This is an automated message — please do not reply.</p>
         </div>
       `,
