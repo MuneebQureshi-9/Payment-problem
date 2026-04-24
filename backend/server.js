@@ -205,20 +205,12 @@ app.post("/api/send-email", async (req, res) => {
       to: email,
       subject: `Payment Confirmation — ${transaction_id}`,
       html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;text-align:center;">
           <h2 style="color:#4f46e5;">Payment Received ✅</h2>
           <p>Hi <strong>${name}</strong>,</p>
-          <p>We have received your payment. Here are the details:</p>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Transaction ID</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${transaction_id}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Amount</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">$${amount}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Card</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">**** **** **** ${(card || "").replace(/\s/g, "").slice(-4)}</td></tr>
-          </table>
-          <p>If you did not make this payment, please contact us immediately.</p>
-          <p style="color:#6b7280;font-size:12px;">This is an automated message — please do not reply.</p>
+          <p>Thank you for your payment. We have successfully received it.</p>
+          <p style="font-size: 16px; font-weight: bold; color: #333; margin: 20px 0;">Your order is currently in process.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:30px;">This is an automated message — please do not reply.</p>
         </div>
       `,
     };
