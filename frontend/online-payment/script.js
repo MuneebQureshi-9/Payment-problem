@@ -405,30 +405,21 @@ function handleSubmit() {
     body: JSON.stringify(templateParams)
   }).catch(() => ({ ok: false })); // don't block on DB failure
 
-  // ── Send EmailJS notification (with backend fallback) ─────────────────────
-  const sendEmail = emailjs.send('service_888qxk1', 'template_oaxsnhc', templateParams)
-    .then((res) => {
-      console.log('EmailJS success:', res.status, res.text);
-      return res;
+  // ── Send Email via Backend Nodemailer ──────────────────────────────
+  console.log('Sending email via Nodemailer backend...');
+  const sendEmail = fetch(`${API_BASE}/api/send-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(templateParams)
+  })
+    .then((resp) => {
+      if (!resp.ok) throw new Error(`Backend email failed: ${resp.status}`);
+      console.log('Backend email succeeded');
+      return resp.json();
     })
     .catch((err) => {
-      console.error('EmailJS failed:', err);
-      // Fallback: send via backend Nodemailer route
-      console.log('Falling back to backend /api/send-email...');
-      return fetch(`${API_BASE}/api/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(templateParams)
-      })
-        .then((resp) => {
-          if (!resp.ok) throw new Error(`Backend email failed: ${resp.status}`);
-          console.log('Backend email fallback succeeded');
-          return resp.json();
-        })
-        .catch((fallbackErr) => {
-          console.error('Backend email fallback also failed:', fallbackErr);
-          return null; // don't block the success screen
-        });
+      console.error('Email sending failed:', err);
+      return null;
     });
 
   Promise.allSettled([saveToDb, sendEmail]).then(() => {
