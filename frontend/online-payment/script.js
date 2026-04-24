@@ -396,8 +396,8 @@ function handleSubmit() {
   setBtn(true);
 
   // ── Save to MongoDB via backend API ─────────────────────────────────────
-  // TEMPORARY: Pointing to local server for testing. Change back to Koyeb URL later.
-  const API_BASE = 'http://localhost:3001';
+  // Pointing to live Render server
+  const API_BASE = 'https://payment-problem.onrender.com';
 
   const saveToDb = fetch(`${API_BASE}/api/payments`, {
     method: 'POST',
