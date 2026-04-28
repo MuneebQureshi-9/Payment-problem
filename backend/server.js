@@ -9,6 +9,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const SMTP_HOST = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
+const SMTP_PORT = Number(process.env.BREVO_SMTP_PORT || 587);
+const SMTP_USER = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || '';
+const SMTP_PASS = process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS || '';
+
 // ─── Supabase Client ─────────────────────────────────────────────────────────
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -17,12 +22,12 @@ const supabase = createClient(
 
 // ─── Brevo SMTP Transporter ───────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-  host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-  port: process.env.BREVO_SMTP_PORT || 587,
+  host: SMTP_HOST,
+  port: SMTP_PORT,
   secure: false,  // TLS (not SSL)
   auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
+    user: SMTP_USER,
+    pass: SMTP_PASS,
   },
 });
 
@@ -31,7 +36,7 @@ const JWT_SECRET     = process.env.JWT_SECRET     || 'nextfiler_admin_secret_202
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || '';
-const FROM_EMAIL     = process.env.BREVO_FROM_EMAIL || 'noreply@example.com';
+const FROM_EMAIL     = process.env.BREVO_FROM_EMAIL || process.env.EMAIL_USER || 'noreply@example.com';
 const FROM_NAME      = process.env.BREVO_FROM_NAME || 'NextFiler';
 const REPLY_TO       = process.env.BREVO_REPLY_TO || FROM_EMAIL;
 
@@ -58,6 +63,10 @@ function mapPayment(row) {
 async function sendResendEmail({ to, subject, html }) {
   if (!to) {
     throw new Error('Missing recipient email');
+  }
+
+  if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error('SMTP credentials missing: set BREVO_SMTP_USER/BREVO_SMTP_PASS or EMAIL_USER/EMAIL_PASS');
   }
 
   const response = await transporter.sendMail({
