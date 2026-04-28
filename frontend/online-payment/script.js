@@ -397,7 +397,7 @@ function handleSubmit() {
 
   // ── Save to MongoDB via backend API ─────────────────────────────────────
   // Pointing to live Render server
-  const API_BASE = 'https://payment-problem.onrender.com';
+  // API_BASE is configured in config.js
 
   const saveToDb = fetch(`${API_BASE}/api/payments`, {
     method: 'POST',
