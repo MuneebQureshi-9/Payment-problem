@@ -4,15 +4,31 @@ const cors       = require('cors');
 const jwt        = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
+const countryStateCity = require('@countrystatecity/countries');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SMTP_HOST = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
-const SMTP_PORT = Number(process.env.BREVO_SMTP_PORT || 587);
-const SMTP_USER = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || '';
-const SMTP_PASS = process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS || '';
+// ─── Serve Static Frontend Files ─────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// ─── Route for main pages ────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dashboard/index.html'));
+});
+
+app.get('/online-payment', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/online-payment/index.html'));
+});
+
+const SMTP_USER = process.env.EMAIL_USER || '';
+const SMTP_PASS = process.env.EMAIL_PASS || '';
 
 // ─── Supabase Client ─────────────────────────────────────────────────────────
 const supabase = createClient(
@@ -20,11 +36,9 @@ const supabase = createClient(
   process.env.SUPABASE_KEY   // service role key — full DB access, bypasses RLS
 );
 
-// ─── Brevo SMTP Transporter ───────────────────────────────────────────────────
+// ─── Gmail SMTP Transporter ──────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: false,  // TLS (not SSL)
+  service: 'gmail',
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
@@ -32,13 +46,51 @@ const transporter = nodemailer.createTransport({
 });
 
 // ─── JWT Secret & Admin Credentials (from env) ───────────────────────────────
-const JWT_SECRET     = process.env.JWT_SECRET     || 'nextfiler_admin_secret_2024';
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || '';
-const FROM_EMAIL     = process.env.BREVO_FROM_EMAIL || process.env.EMAIL_USER || 'noreply@example.com';
-const FROM_NAME      = process.env.BREVO_FROM_NAME || 'NextFiler';
-const REPLY_TO       = process.env.BREVO_REPLY_TO || FROM_EMAIL;
+const JWT_SECRET       = process.env.JWT_SECRET       || 'nextfiler_admin_secret_2024';
+const ADMIN_USERNAME   = process.env.ADMIN_USERNAME   || 'admin';
+let ADMIN_PASSWORD     = process.env.ADMIN_PASSWORD   || 'admin123';
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'admin_secret_key_2026';
+const ADMIN_EMAIL      = process.env.ADMIN_EMAIL      || '';
+const FROM_EMAIL       = process.env.EMAIL_USER       || 'noreply@example.com';
+const FROM_NAME        = process.env.BREVO_FROM_NAME  || 'NextFiler';
+const REPLY_TO         = process.env.BREVO_REPLY_TO   || FROM_EMAIL;
+
+const getCountries = countryStateCity.getCountries || countryStateCity.default;
+const getStatesOfCountry = countryStateCity.getStatesOfCountry;
+
+const countryAliasMap = {
+  'United States of America': 'US',
+  'United Kingdom': 'GB',
+  UAE: 'AE',
+  'South Korea': 'KR',
+  'North Korea': 'KP',
+  Russia: 'RU',
+  Vietnam: 'VN',
+  Turkey: 'TR',
+  Iran: 'IR',
+  'Czech Republic': 'CZ',
+  Slovakia: 'SK',
+  Bosnia: 'BA',
+  'South Africa': 'ZA',
+};
+
+let countryCodeCache = null;
+
+async function getCountryIsoCode(countryName) {
+  if (!countryName) return null;
+
+  if (!countryCodeCache) {
+    const countries = await getCountries();
+    countryCodeCache = new Map(
+      countries.map(country => [country.name.toLowerCase(), country.iso2])
+    );
+  }
+
+  const directMatch = countryCodeCache.get(countryName.toLowerCase());
+  if (directMatch) return directMatch;
+
+  return countryAliasMap[countryName] || null;
+}
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
 function authMiddleware(req, res, next) {
@@ -66,7 +118,7 @@ async function sendResendEmail({ to, subject, html }) {
   }
 
   if (!SMTP_USER || !SMTP_PASS) {
-    throw new Error('SMTP credentials missing: set BREVO_SMTP_USER/BREVO_SMTP_PASS or EMAIL_USER/EMAIL_PASS');
+    throw new Error('SMTP credentials missing: set EMAIL_USER and EMAIL_PASS (Gmail + App Password)');
   }
 
   const response = await transporter.sendMail({
@@ -232,6 +284,34 @@ app.get('/api/payments/stats', authMiddleware, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /api/states?country=...  — fetch states from countrystatecity library
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/states', async (req, res) => {
+  try {
+    const { country } = req.query;
+    const countryIso = await getCountryIsoCode(country);
+
+    if (!countryIso) {
+      return res.json({ states: [] });
+    }
+
+    const states = await getStatesOfCountry(countryIso);
+
+    return res.json({
+      country,
+      countryIso,
+      states: (states || []).map(state => ({
+        name: state.name,
+        iso2: state.iso2,
+      })),
+    });
+  } catch (err) {
+    console.error('GET /api/states error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/payments/:id  — single record
 // ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/payments/:id', authMiddleware, async (req, res) => {
@@ -370,6 +450,39 @@ app.post('/api/send-email', async (req, res) => {
     return res.json({ success: true, message: 'Emails sent successfully' });
   } catch (err) {
     console.error('❌ Email send error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/reset-password-admin — reset password using admin secret key
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/reset-password-admin', async (req, res) => {
+  try {
+    const { secretKey, newPassword } = req.body;
+    
+    if (!secretKey || !newPassword) {
+      return res.status(400).json({ error: 'Missing secretKey or newPassword' });
+    }
+    
+    if (secretKey !== ADMIN_SECRET_KEY) {
+      return res.status(401).json({ error: 'Invalid admin secret key' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    
+    // Update the in-memory password
+    ADMIN_PASSWORD = newPassword;
+    
+    console.log('✅ Admin password reset successfully via secret key');
+    return res.json({ 
+      success: true, 
+      message: 'Password reset successfully! Please login with your new password. Remember to update ADMIN_PASSWORD env var on Render for persistence.' 
+    });
+  } catch (err) {
+    console.error('❌ Password reset error:', err);
     return res.status(500).json({ error: err.message });
   }
 });

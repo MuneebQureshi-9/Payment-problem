@@ -1,18 +1,16 @@
 require('dotenv').config();
 const nodemailer = require('nodemailer');
 
-const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || 'noreply@example.com';
+const FROM_EMAIL = process.env.EMAIL_USER || 'noreply@example.com';
 const FROM_NAME = process.env.BREVO_FROM_NAME || 'NextFiler';
 const REPLY_TO = process.env.BREVO_REPLY_TO || FROM_EMAIL;
 
 async function testEmail() {
   const transporter = nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-    port: process.env.BREVO_SMTP_PORT || 587,
-    secure: false,
+    service: 'gmail',
     auth: {
-      user: process.env.BREVO_SMTP_USER,
-      pass: process.env.BREVO_SMTP_PASS,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 

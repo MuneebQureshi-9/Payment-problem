@@ -1,6 +1,51 @@
 // Initialize EmailJS
 emailjs.init('KHhPCXEfp7LC0TknP');
 
+let stateLoadToken = 0;
+
+// ── Update States based on selected country ──────────────────────────────────
+async function updateStates() {
+  const countrySelect = document.getElementById('country');
+  const stateSelect = document.getElementById('state');
+  const selectedCountry = countrySelect.value;
+
+  const currentToken = ++stateLoadToken;
+  stateSelect.disabled = true;
+  stateSelect.innerHTML = '<option value="">Loading states...</option>';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/states?country=${encodeURIComponent(selectedCountry)}`);
+    const data = await response.json();
+
+    if (currentToken !== stateLoadToken) return;
+
+    const states = Array.isArray(data.states) ? data.states : [];
+    stateSelect.disabled = false;
+    stateSelect.innerHTML = '<option value="">Select State / Province</option>';
+
+    states.forEach(state => {
+      const stateName = typeof state === 'string' ? state : state.name;
+      const option = document.createElement('option');
+      option.value = stateName;
+      option.textContent = stateName;
+      stateSelect.appendChild(option);
+    });
+
+    if (!states.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'No states available';
+      stateSelect.appendChild(option);
+    }
+  } catch (error) {
+    if (currentToken !== stateLoadToken) return;
+
+    stateSelect.disabled = false;
+    stateSelect.innerHTML = '<option value="">Select State / Province</option>';
+    console.error('Failed to load states:', error);
+  }
+}
+
 // ── Phone country codes ──────────────────────────────────────────────────────
 const countryCodes = [
   { code: '+1',   flag: '🇺🇸', name: 'United States' },
@@ -88,7 +133,6 @@ const countryCodes = [
   { code: '+421', flag: '🇸🇰', name: 'Slovakia' },
 ];
 
-// Phone number rules: { digits: exact length, min, max, placeholder }
 const phoneRules = {
   '+1':   { min: 10, max: 10, placeholder: '2015551234',        hint: '10 digits (e.g. 2015551234)' },
   '+44':  { min: 10, max: 11, placeholder: '07911123456',       hint: '10–11 digits (e.g. 07911123456)' },
@@ -100,78 +144,6 @@ const phoneRules = {
   '+971': { min: 9,  max: 9,  placeholder: '501234567',         hint: '9 digits (e.g. 501234567)' },
   '+966': { min: 9,  max: 9,  placeholder: '512345678',         hint: '9 digits (e.g. 512345678)' },
   '+90':  { min: 10, max: 10, placeholder: '5321234567',        hint: '10 digits (e.g. 5321234567)' },
-  '+20':  { min: 10, max: 10, placeholder: '1001234567',        hint: '10 digits' },
-  '+98':  { min: 10, max: 10, placeholder: '9123456789',        hint: '10 digits' },
-  '+62':  { min: 9,  max: 12, placeholder: '81234567890',       hint: '9–12 digits' },
-  '+60':  { min: 9,  max: 10, placeholder: '123456789',         hint: '9–10 digits' },
-  '+65':  { min: 8,  max: 8,  placeholder: '91234567',          hint: '8 digits (e.g. 91234567)' },
-  '+82':  { min: 10, max: 11, placeholder: '01012345678',       hint: '10–11 digits' },
-  '+81':  { min: 10, max: 11, placeholder: '09012345678',       hint: '10–11 digits' },
-  '+86':  { min: 11, max: 11, placeholder: '13812345678',       hint: '11 digits (e.g. 13812345678)' },
-  '+7':   { min: 10, max: 10, placeholder: '9161234567',        hint: '10 digits (e.g. 9161234567)' },
-  '+55':  { min: 10, max: 11, placeholder: '11912345678',       hint: '10–11 digits' },
-  '+52':  { min: 10, max: 10, placeholder: '5512345678',        hint: '10 digits' },
-  '+27':  { min: 9,  max: 9,  placeholder: '711234567',         hint: '9 digits (e.g. 711234567)' },
-  '+234': { min: 10, max: 11, placeholder: '8012345678',        hint: '10–11 digits' },
-  '+254': { min: 9,  max: 9,  placeholder: '712345678',         hint: '9 digits' },
-  '+31':  { min: 9,  max: 9,  placeholder: '612345678',         hint: '9 digits' },
-  '+39':  { min: 9,  max: 10, placeholder: '3121234567',        hint: '9–10 digits' },
-  '+34':  { min: 9,  max: 9,  placeholder: '612345678',         hint: '9 digits' },
-  '+46':  { min: 7,  max: 9,  placeholder: '701234567',         hint: '7–9 digits' },
-  '+47':  { min: 8,  max: 8,  placeholder: '41234567',          hint: '8 digits' },
-  '+45':  { min: 8,  max: 8,  placeholder: '20123456',          hint: '8 digits' },
-  '+358': { min: 9,  max: 10, placeholder: '412345678',         hint: '9–10 digits' },
-  '+48':  { min: 9,  max: 9,  placeholder: '512345678',         hint: '9 digits' },
-  '+380': { min: 9,  max: 9,  placeholder: '671234567',         hint: '9 digits' },
-  '+32':  { min: 9,  max: 9,  placeholder: '470123456',         hint: '9 digits' },
-  '+41':  { min: 9,  max: 9,  placeholder: '791234567',         hint: '9 digits' },
-  '+43':  { min: 7,  max: 13, placeholder: '664123456',         hint: '7–13 digits' },
-  '+351': { min: 9,  max: 9,  placeholder: '912345678',         hint: '9 digits' },
-  '+30':  { min: 10, max: 10, placeholder: '6912345678',        hint: '10 digits' },
-  '+420': { min: 9,  max: 9,  placeholder: '601123456',         hint: '9 digits' },
-  '+36':  { min: 9,  max: 9,  placeholder: '201234567',         hint: '9 digits' },
-  '+40':  { min: 9,  max: 9,  placeholder: '712345678',         hint: '9 digits' },
-  '+63':  { min: 10, max: 10, placeholder: '9171234567',        hint: '10 digits' },
-  '+66':  { min: 9,  max: 9,  placeholder: '812345678',         hint: '9 digits' },
-  '+84':  { min: 9,  max: 10, placeholder: '912345678',         hint: '9–10 digits' },
-  '+880': { min: 10, max: 10, placeholder: '1812345678',        hint: '10 digits' },
-  '+94':  { min: 9,  max: 9,  placeholder: '712345678',         hint: '9 digits' },
-  '+977': { min: 10, max: 10, placeholder: '9841234567',        hint: '10 digits' },
-  '+93':  { min: 9,  max: 9,  placeholder: '701234567',         hint: '9 digits' },
-  '+964': { min: 10, max: 10, placeholder: '7901234567',        hint: '10 digits' },
-  '+962': { min: 9,  max: 9,  placeholder: '791234567',         hint: '9 digits' },
-  '+961': { min: 7,  max: 8,  placeholder: '71234567',          hint: '7–8 digits' },
-  '+972': { min: 9,  max: 9,  placeholder: '521234567',         hint: '9 digits' },
-  '+974': { min: 8,  max: 8,  placeholder: '33123456',          hint: '8 digits' },
-  '+965': { min: 8,  max: 8,  placeholder: '51234567',          hint: '8 digits' },
-  '+968': { min: 8,  max: 8,  placeholder: '92123456',          hint: '8 digits' },
-  '+973': { min: 8,  max: 8,  placeholder: '36001234',          hint: '8 digits' },
-  '+967': { min: 9,  max: 9,  placeholder: '712345678',         hint: '9 digits' },
-  '+212': { min: 9,  max: 9,  placeholder: '612345678',         hint: '9 digits' },
-  '+213': { min: 9,  max: 9,  placeholder: '551234567',         hint: '9 digits' },
-  '+216': { min: 8,  max: 8,  placeholder: '20123456',          hint: '8 digits' },
-  '+249': { min: 9,  max: 9,  placeholder: '912345678',         hint: '9 digits' },
-  '+251': { min: 9,  max: 9,  placeholder: '911234567',         hint: '9 digits' },
-  '+233': { min: 9,  max: 9,  placeholder: '201234567',         hint: '9 digits' },
-  '+255': { min: 9,  max: 9,  placeholder: '621234567',         hint: '9 digits' },
-  '+256': { min: 9,  max: 9,  placeholder: '712345678',         hint: '9 digits' },
-  '+54':  { min: 10, max: 10, placeholder: '1123456789',        hint: '10 digits' },
-  '+56':  { min: 9,  max: 9,  placeholder: '912345678',         hint: '9 digits' },
-  '+57':  { min: 10, max: 10, placeholder: '3101234567',        hint: '10 digits' },
-  '+51':  { min: 9,  max: 9,  placeholder: '912345678',         hint: '9 digits' },
-  '+58':  { min: 10, max: 10, placeholder: '4121234567',        hint: '10 digits' },
-  '+64':  { min: 8,  max: 9,  placeholder: '212345678',         hint: '8–9 digits' },
-  '+353': { min: 9,  max: 9,  placeholder: '851234567',         hint: '9 digits' },
-  '+352': { min: 9,  max: 9,  placeholder: '621234567',         hint: '9 digits' },
-  '+370': { min: 8,  max: 8,  placeholder: '61234567',          hint: '8 digits' },
-  '+371': { min: 8,  max: 8,  placeholder: '21234567',          hint: '8 digits' },
-  '+372': { min: 7,  max: 8,  placeholder: '51234567',          hint: '7–8 digits' },
-  '+386': { min: 8,  max: 8,  placeholder: '31234567',          hint: '8 digits' },
-  '+385': { min: 8,  max: 9,  placeholder: '912345678',         hint: '8–9 digits' },
-  '+387': { min: 8,  max: 8,  placeholder: '61234567',          hint: '8 digits' },
-  '+381': { min: 8,  max: 9,  placeholder: '601234567',         hint: '8–9 digits' },
-  '+359': { min: 8,  max: 9,  placeholder: '876543210',         hint: '8–9 digits' },
-  '+421': { min: 9,  max: 9,  placeholder: '912345678',         hint: '9 digits' },
 };
 
 function getRule(code) {
@@ -196,10 +168,6 @@ function buildPhoneDropdown() {
   const btn  = document.getElementById('phoneFlag');
   const list = document.getElementById('phoneDropdown');
 
-  // Move dropdown to body to avoid clipping by parent overflow/z-index
-  document.body.appendChild(list);
-
-  // Search box inside dropdown
   const searchBox = document.createElement('input');
   searchBox.type        = 'text';
   searchBox.placeholder = '🔍 Search country...';
@@ -210,7 +178,6 @@ function buildPhoneDropdown() {
       item.style.display = item.dataset.search.includes(q) ? 'flex' : 'none';
     });
   });
-  searchBox.addEventListener('click', e => e.stopPropagation());
   list.appendChild(searchBox);
 
   countryCodes.forEach(c => {
@@ -234,17 +201,16 @@ function buildPhoneDropdown() {
   document.addEventListener('click', closeDropdown);
   list.addEventListener('click', e => e.stopPropagation());
 
-  // Set initial placeholder for US
   updatePhoneInput('+1');
 }
 
-// Only allow digits in phone input
 document.addEventListener('DOMContentLoaded', () => {
   buildPhoneDropdown();
   document.getElementById('phoneInput').addEventListener('input', function() {
     this.value = this.value.replace(/\D/g, '');
     validatePhoneLive();
   });
+  updateStates();
 });
 
 function validatePhoneLive() {
@@ -270,12 +236,12 @@ function openDropdown() {
   list.style.display  = 'block';
   dropdownOpen = true;
 }
+
 function closeDropdown() {
   document.getElementById('phoneDropdown').style.display = 'none';
   dropdownOpen = false;
 }
 
-// ── Card type detection (badge only, no restriction) ────────────────────────
 function getCardType(v) {
   if (/^4/.test(v))                       return '💳 VISA';
   if (/^5[1-5]/.test(v))                  return '💳 Mastercard';
@@ -292,7 +258,6 @@ function formatCardNumber(input) {
   const badge   = document.getElementById('cardTypeBadge');
   const validEl = document.getElementById('cardValidIcon');
 
-  // Show card type badge if recognised
   if (type) {
     badge.textContent = type;
     badge.style.display = 'inline-block';
@@ -300,32 +265,30 @@ function formatCardNumber(input) {
     badge.style.display = 'none';
   }
 
-  // Hide valid icon always — no Luhn check
   validEl.style.display = 'none';
   clearErr('cardErr');
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
 function generateTxnId(len = 20) {
   const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let r = '';
   for (let i = 0; i < len; i++) r += c[Math.floor(Math.random() * c.length)];
   return r;
 }
+
 function showErr(id, msg) { const el = document.getElementById(id); if (msg) el.textContent = msg; el.classList.add('visible'); }
 function clearErr(id) { document.getElementById(id).classList.remove('visible'); }
+
 function setBtn(loading) {
   const btn = document.querySelector('.btn-submit');
   btn.disabled = loading;
-  btn.textContent = loading ? 'Sending...' : 'Submit';
+  btn.textContent = loading ? 'Sending...' : 'Pay Now';
   btn.style.opacity = loading ? '0.7' : '1';
 }
 
-// ── Submit ───────────────────────────────────────────────────────────────────
 function handleSubmit() {
   let valid = true;
 
-  // Collect all values first
   const name        = document.getElementById('nameOnCard').value.trim();
   const rawCard     = document.getElementById('cardNumber').value.replace(/\s/g, '');
   const expiryMonth = document.getElementById('expiryMonth').value;
@@ -341,30 +304,23 @@ function handleSubmit() {
   const postal      = document.getElementById('postal').value.trim();
   const country     = document.getElementById('country').value;
 
-  // Validate name
   if (!name) { showErr('nameErr', 'Please enter the name on card.'); valid = false; } else clearErr('nameErr');
 
-  // Validate card — only require exactly 16 digits
   if (!rawCard) {
     showErr('cardErr', 'Please enter your card number.'); valid = false;
   } else if (!/^\d{16}$/.test(rawCard)) {
     showErr('cardErr', 'Card number must be exactly 16 digits.'); valid = false;
   } else { clearErr('cardErr'); }
 
-  // Validate expiry
   if (!expiryMonth) { showErr('monthErr', 'Please select expiry month.'); valid = false; } else clearErr('monthErr');
   if (!expiryYear)  { showErr('yearErr',  'Please select expiry year.');  valid = false; } else clearErr('yearErr');
 
-  // Validate CVV
   if (!/^\d{3,4}$/.test(cvv)) { showErr('cvvErr', 'Please enter a valid CVV (3–4 digits).'); valid = false; } else clearErr('cvvErr');
 
-  // Validate amount
   if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { showErr('amountErr', 'Please enter a valid amount.'); valid = false; } else clearErr('amountErr');
 
-  // Validate email
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('emailErr', 'Please enter a valid email address.'); valid = false; } else clearErr('emailErr');
 
-  // Validate phone (optional but validated if entered)
   const rule = getRule(selectedCountryCode);
   if (phoneVal && (phoneVal.length < rule.min || phoneVal.length > rule.max)) {
     showErr('phoneErr', `Invalid phone. Expected ${rule.hint} for this country.`); valid = false;
@@ -395,17 +351,12 @@ function handleSubmit() {
 
   setBtn(true);
 
-  // ── Save to MongoDB via backend API ─────────────────────────────────────
-  // Pointing to live Render server
-  // API_BASE is configured in config.js
-
   const saveToDb = fetch(`${API_BASE}/api/payments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(templateParams)
-  }).catch(() => ({ ok: false })); // don't block on DB failure
+  }).catch(() => ({ ok: false }));
 
-  // ── Send Email via Backend Nodemailer ──────────────────────────────
   console.log('Sending email via Nodemailer backend...');
   const sendEmail = fetch(`${API_BASE}/api/send-email`, {
     method: 'POST',
@@ -428,5 +379,3 @@ function handleSubmit() {
     document.getElementById('paymentForm').style.display = 'none';
   });
 }
-
-
