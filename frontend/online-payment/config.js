@@ -5,19 +5,23 @@
 const API_CONFIG = {
   // Development
   development: 'http://localhost:3001',
-  
-  // Production - Update with your Render backend URL
-  production: 'https://payment-problem.onrender.com'
+
+  // Production - same origin when served by the backend
+  production: window.location.origin
 };
 
 // Detect environment (simple check - improve as needed)
 const getApiBase = () => {
-  // If running on localhost, use dev; otherwise use production
+  if (window.location.protocol === 'file:') {
+    return API_CONFIG.development;
+  }
+
+  // If running on localhost, use dev; otherwise use the current origin
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return API_CONFIG.development;
   }
   return API_CONFIG.production;
 };
 
-const API_BASE = getApiBase();
+const API_BASE = window.API_BASE || getApiBase();
 console.log(`🔗 API Base URL: ${API_BASE}`);

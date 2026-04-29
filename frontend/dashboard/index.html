@@ -896,9 +896,9 @@
   </div>
 
   <script>
-    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const API = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:3001'
-      : 'https://payment-problem.onrender.com';
+      : window.location.origin;
     let token = localStorage.getItem('dash_token') || '';
     let currentPage = 1;
     let searchQuery = '';
