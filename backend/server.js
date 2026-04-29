@@ -19,19 +19,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dashboard/index.html'));
-});
-
 app.get('/online-payment', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/online-payment/index.html'));
 });
-
-const SMTP_HOST = process.env.BREVO_SMTP_HOST || process.env.SMTP_HOST || '';
-const SMTP_PORT = parseInt(process.env.BREVO_SMTP_PORT || process.env.SMTP_PORT || '587', 10);
-const SMTP_SECURE = String(process.env.BREVO_SMTP_SECURE || process.env.SMTP_SECURE || '').toLowerCase() === 'true';
-const SMTP_USER = process.env.EMAIL_USER || process.env.BREVO_SMTP_USER || '';
-const SMTP_PASS = process.env.EMAIL_PASS || process.env.BREVO_SMTP_PASS || '';
 
 // ─── Supabase Client ─────────────────────────────────────────────────────────
 const supabase = createClient(
@@ -39,39 +29,23 @@ const supabase = createClient(
   process.env.SUPABASE_KEY   // service role key — full DB access, bypasses RLS
 );
 
-// ─── SMTP Transporter ────────────────────────────────────────────────────────
-const transporterOptions = SMTP_HOST
-  ? {
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    }
-  : {
-      service: 'gmail',
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-    };
-
-const transporter = nodemailer.createTransport(transporterOptions);
-
+// ─── SMTP Transporter (Gmail only) ──────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 // ─── JWT Secret & Admin Credentials (from env) ───────────────────────────────
 const JWT_SECRET       = process.env.JWT_SECRET       || 'nextfiler_admin_secret_2024';
 const ADMIN_USERNAME   = process.env.ADMIN_USERNAME   || 'admin';
 let ADMIN_PASSWORD     = process.env.ADMIN_PASSWORD   || 'admin123';
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'admin_secret_key_2026';
 const ADMIN_EMAIL      = process.env.ADMIN_EMAIL      || '';
-const FROM_EMAIL       = process.env.EMAIL_USER || process.env.BREVO_FROM_EMAIL || 'noreply@example.com';
-const FROM_NAME        = process.env.BREVO_FROM_NAME  || 'NextFiler';
-const REPLY_TO         = process.env.BREVO_REPLY_TO   || FROM_EMAIL;
+const FROM_EMAIL       = process.env.EMAIL_USER || 'noreply@example.com';
+const FROM_NAME        = process.env.EMAIL_FROM_NAME || 'NextFiler';
+const REPLY_TO         = process.env.EMAIL_REPLY_TO || FROM_EMAIL;
 
 const getCountries = countryStateCity.getCountries || countryStateCity.default;
 const getStatesOfCountry = countryStateCity.getStatesOfCountry;
@@ -135,8 +109,8 @@ async function sendResendEmail({ to, subject, html }) {
     throw new Error('Missing recipient email');
   }
 
-  if (!SMTP_USER || !SMTP_PASS) {
-    throw new Error('SMTP credentials missing: set BREVO_SMTP_USER/BREVO_SMTP_PASS or EMAIL_USER/EMAIL_PASS');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('SMTP credentials missing: set EMAIL_USER/EMAIL_PASS');
   }
 
   const response = await transporter.sendMail({
