@@ -896,9 +896,14 @@
   </div>
 
   <script>
-    const API = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:3001'
-      : window.location.origin;
+    const API = (() => {
+      const apiOverride = window.API_BASE || localStorage.getItem('API_BASE_OVERRIDE');
+      if (apiOverride) return apiOverride.replace(/\/$/, '');
+      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+      }
+      return 'https://payment-dashboard-api.onrender.com';
+    })();
     let token = localStorage.getItem('dash_token') || '';
     let currentPage = 1;
     let searchQuery = '';
