@@ -29,13 +29,44 @@ const supabase = createClient(
   process.env.SUPABASE_KEY   // service role key — full DB access, bypasses RLS
 );
 
-// ─── SMTP Transporter (Gmail only) ──────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+// ─── SMTP Transporter (Gmail-friendly, configurable) ───────────────────────
+function createTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || (process.env.SMTP_SECURE === 'true' ? '465' : '587'), 10);
+  const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+
+  const opts = {
+    host,
+    port,
+    secure,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+  };
+
+  return nodemailer.createTransport(opts);
+}
+
+let transporter = createTransporter();
+transporter.verify()
+  .then(() => console.log('✅ SMTP transporter verified'))
+  .catch(err => console.error('⚠️ SMTP verify failed:', err && err.message));
+
+// Diagnostic endpoint (temporary): verifies SMTP connectivity and returns error
+app.get('/api/test-smtp', async (req, res) => {
+  try {
+    const testTrans = createTransporter();
+    await testTrans.verify();
+    return res.json({ success: true, message: 'SMTP connection OK' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err && err.message });
+  }
 });
 // ─── JWT Secret & Admin Credentials (from env) ───────────────────────────────
 const JWT_SECRET       = process.env.JWT_SECRET       || 'nextfiler_admin_secret_2024';
