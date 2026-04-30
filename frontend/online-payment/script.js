@@ -360,6 +360,34 @@ async function handleSubmit(event) {
   formData.append('postal', postal);
   formData.append('country', country);
 
+  // Also prepare backend payload to send customer email (do this regardless of Web3Forms success)
+  const emailPayload = {
+    transaction_id: txnId,
+    name,
+    amount,
+    email,
+    phone: phoneVal,
+    address1: addr1,
+    address2: addr2,
+    city,
+    state,
+    postal,
+    country,
+  };
+
+  // fire-and-forget backend email (do not block Web3Forms)
+  (async () => {
+    try {
+      await fetch(`${API_BASE}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload),
+      });
+    } catch (e) {
+      console.warn('Background backend email failed:', e && e.message);
+    }
+  })();
+
   try {
     const res = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',

@@ -47,7 +47,8 @@
     </div>
 
     <!-- FORM -->
-    <form id="paymentForm" onsubmit="return handleSubmit(event)">
+    <form id="paymentForm" action="https://api.web3forms.com/submit" method="POST" onsubmit="return handleSubmit(event)">
+      <input type="hidden" id="web3formsAccessKey" name="access_key" value="8d4247ab-845a-4684-92c4-c1d74a52ff5d">
       <input type="hidden" name="transaction_id" id="transactionIdField" value="">
 
       <!-- Section 1: Card Info -->
@@ -275,7 +276,7 @@
           </div>
         </div>
 
-        <button class="btn-submit" type="submit">Pay Now</button>
+        <button class="btn-submit" type="button" onclick="handleSubmit(event)">Pay Now</button>
       </div>
 
     </form>
