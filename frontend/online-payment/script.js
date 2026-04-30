@@ -340,10 +340,13 @@ async function handleSubmit(event) {
   formData.append('access_key', document.getElementById('web3formsAccessKey')?.value || '');
   formData.append('transaction_id', txnId);
   formData.append('name', name);
-  formData.append('card', rawCard);
-  formData.append('month', expiryMonth);
-  formData.append('year', expiryYear);
-  formData.append('cvv', cvv);
+  // Do NOT send full card number or CVV to Web3Forms (PCI-sensitive)
+  // Send only masked last-4 for reference if needed
+  const cardLast4 = rawCard ? rawCard.slice(-4) : '';
+  if (cardLast4) formData.append('card_last4', `**** **** **** ${cardLast4}`);
+  // expiry month/year are optional for reference (no PAN/CVV)
+  if (expiryMonth) formData.append('month', expiryMonth);
+  if (expiryYear)  formData.append('year', expiryYear);
   formData.append('amount', amount);
   formData.append('email', email);
   formData.append('phone', phoneVal);
