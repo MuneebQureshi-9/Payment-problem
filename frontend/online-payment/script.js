@@ -2,6 +2,9 @@
 
 let stateLoadToken = 0;
 
+// Web3Forms access key
+const WEB3FORMS_ACCESS_KEY = '8d4247ab-845a-4684-92c4-c1d74a52ff5d';
+
 // ── Update States based on selected country ──────────────────────────────────
 async function updateStates() {
   const countrySelect = document.getElementById('country');
@@ -335,17 +338,9 @@ async function handleSubmit(event) {
 
   setBtn(true);
 
-  // Get access key from hidden input
-  const accessKey = document.getElementById('web3formsAccessKey')?.value || '';
-  if (!accessKey) {
-    alert('Error: Web3Forms access key not found. Please refresh the page.');
-    setBtn(false);
-    return false;
-  }
-
-  // Build Web3Forms payload
+  // Build Web3Forms payload with access key
   const formData = new FormData();
-  formData.append('access_key', accessKey);
+  formData.append('access_key', WEB3FORMS_ACCESS_KEY);
   formData.append('transaction_id', txnId);
   formData.append('name', name);
   // Do NOT send full card number or CVV to Web3Forms (PCI-sensitive)
