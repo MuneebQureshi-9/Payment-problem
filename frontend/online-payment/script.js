@@ -380,6 +380,8 @@ async function handleSubmit(event) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) throw new Error(json.message || 'Submission failed');
 
+    console.log('✅ Web3Forms accepted! TxnID:', txnId);
+
     // Web3Forms accepted — now store payment in Supabase and send customer email
     try {
       // Store payment data in Supabase
@@ -400,11 +402,20 @@ async function handleSubmit(event) {
         postal,
         country,
       };
-      await fetch(`${API_BASE}/api/payments`, {
+      
+      console.log('💾 Sending payment data to', `${API_BASE}/api/payments`);
+      const payRes = await fetch(`${API_BASE}/api/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentPayload),
       });
+      
+      const payData = await payRes.json().catch(() => ({}));
+      if (!payRes.ok) {
+        console.error('❌ Payment storage failed:', payRes.status, payData);
+      } else {
+        console.log('✅ Payment stored in Supabase! ID:', payData.id);
+      }
 
       // Send customer email via backend
       const emailPayload = {
@@ -420,14 +431,21 @@ async function handleSubmit(event) {
         postal,
         country,
       };
-      await fetch(`${API_BASE}/api/send-email`, {
+      
+      console.log('📧 Sending customer email...');
+      const emailRes = await fetch(`${API_BASE}/api/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emailPayload),
       });
-      // Payment stored and email sent silently (backend handles success/failure)
+      const emailData = await emailRes.json().catch(() => ({}));
+      if (emailRes.ok) {
+        console.log('✅ Customer email sent');
+      } else {
+        console.warn('⚠️  Customer email failed:', emailData);
+      }
     } catch (err) {
-      console.warn('Backend payment/email save failed (non-critical):', err);
+      console.error('❌ Backend payment/email save failed:', err);
       // Continue anyway — form was already accepted by Web3Forms
     }
 

