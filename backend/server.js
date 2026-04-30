@@ -554,33 +554,77 @@ app.post('/api/send-email', async (req, res) => {
       `,
     };
 
-    const customerResult = await sendEmail({
-      to: customerMail.to,
-      subject: customerMail.subject,
-      text: customerMail.text,
-      html: customerMail.html,
-      from: customerMail.from,
-    });
+    let customerResult = null;
+    let customerError = null;
+    let adminResult = null;
+    let adminError = null;
 
-    const adminResult = await sendEmail({
-      to: adminMail.to,
-      subject: adminMail.subject,
-      text: adminMail.text,
-      html: adminMail.html,
-      from: adminMail.from,
-    });
+    // Try to send customer email
+    try {
+      customerResult = await sendEmail({
+        to: customerMail.to,
+        subject: customerMail.subject,
+        text: customerMail.text,
+        html: customerMail.html,
+        from: customerMail.from,
+      });
+      console.log(`✅ Customer email sent to ${email} for txn ${transaction_id}`);
+    } catch (err) {
+      customerError = err && err.message;
+      console.error(`❌ Customer email failed for ${email}:`, customerError);
+    }
 
-    console.log(`✅ Emails sent for txn ${transaction_id}`);
-    return res.json({
-      success: true,
-      message: 'Emails sent successfully',
-      delivery: {
-        customerAccepted: customerResult.response?.accepted || [],
-        adminAccepted: adminResult.response?.accepted || [],
-      },
-    });
+    // Try to send admin email (independent of customer email)
+    try {
+      adminResult = await sendEmail({
+        to: adminMail.to,
+        subject: adminMail.subject,
+        text: adminMail.text,
+        html: adminMail.html,
+        from: adminMail.from,
+      });
+      console.log(`✅ Admin email sent to ${ADMIN_EMAIL} for txn ${transaction_id}`);
+    } catch (err) {
+      adminError = err && err.message;
+      console.error(`❌ Admin email failed:`, adminError);
+    }
+
+    // Return result showing which emails succeeded
+    if (customerResult && adminResult) {
+      console.log(`✅ Both emails sent successfully for txn ${transaction_id}`);
+      return res.json({
+        success: true,
+        message: 'Both emails sent successfully',
+        delivery: {
+          customer: { success: true, email, accepted: customerResult.response?.accepted || [] },
+          admin: { success: true, email: ADMIN_EMAIL, accepted: adminResult.response?.accepted || [] },
+        },
+      });
+    } else if (customerResult || adminResult) {
+      console.warn(`⚠️ Partial email delivery for txn ${transaction_id}`);
+      return res.json({
+        success: true,
+        message: 'Partial delivery',
+        delivery: {
+          customer: customerResult ? { success: true, email, accepted: customerResult.response?.accepted || [] } : { success: false, email, error: customerError },
+          admin: adminResult ? { success: true, email: ADMIN_EMAIL, accepted: adminResult.response?.accepted || [] } : { success: false, email: ADMIN_EMAIL, error: adminError },
+        },
+      });
+    } else {
+      // Both failed
+      const error = customerError || adminError || 'Unknown email error';
+      console.error(`❌ All emails failed for txn ${transaction_id}:`, error);
+      return res.status(500).json({
+        success: false,
+        error,
+        delivery: {
+          customer: { success: false, email, error: customerError },
+          admin: { success: false, email: ADMIN_EMAIL, error: adminError },
+        },
+      });
+    }
   } catch (err) {
-    console.error('❌ Email send error:', err);
+    console.error('❌ Email send error (outer):', err);
     return res.status(500).json({ error: err.message });
   }
 });
