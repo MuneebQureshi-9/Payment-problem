@@ -29,22 +29,23 @@ In Render dashboard, go to your service → Environment
 Add all variables from `.env`:
 ```
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-EMAIL_USER=your-email@example.com
-EMAIL_PASS=your-email-password
+SUPABASE_KEY=your-supabase-service-role-key
+EMAIL_USER=your-smtp-email@example.com
+EMAIL_PASS=your-smtp-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
 ADMIN_EMAIL=your-admin-email@example.com
 JWT_SECRET=your-jwt-secret
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-admin-password
-BREVO_SMTP_HOST=smtp-relay.brevo.com
-BREVO_SMTP_PORT=587
-BREVO_SMTP_USER=your-brevo-smtp-user
-BREVO_SMTP_PASS=your-brevo-smtp-password
-BREVO_FROM_EMAIL=your-from-email@example.com
-BREVO_FROM_NAME=DebtCollectionServiceUs
-BREVO_REPLY_TO=your-reply-to@example.com
+DASHBOARD_URL=https://payment-dashboard-web.onrender.com/dashboard/
 NODE_ENV=production
 ```
+
+Notes:
+- Backend now uses Nodemailer only.
+- Admin notifications are minimal and do not include confidential form data.
 
 ### Step 4: Deploy
 Click "Deploy" — it will automatically pull from GitHub and start your server

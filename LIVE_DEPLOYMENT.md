@@ -5,7 +5,7 @@
 ✅ Backend: Node.js/Express → Deploy on **Render**  
 ✅ Frontend: HTML/JS → Deploy on **Render** OR **FTP**  
 ✅ Database: Supabase (already configured)  
-✅ Email: Brevo SMTP (already configured)  
+✅ Email: Nodemailer SMTP (already configured)  
 
 ---
 
@@ -57,21 +57,22 @@ git push -u origin main
 ```
 SUPABASE_URL = https://your-project.supabase.co
 SUPABASE_KEY = your-supabase-service-role-key
-EMAIL_USER = your-email@example.com
-EMAIL_PASS = your-email-password
+EMAIL_USER = your-smtp-email@example.com
+EMAIL_PASS = your-smtp-password
+SMTP_HOST = smtp.gmail.com
+SMTP_PORT = 587
+SMTP_SECURE = false
 ADMIN_EMAIL = your-admin-email@example.com
 JWT_SECRET = your-jwt-secret
 ADMIN_USERNAME = admin
 ADMIN_PASSWORD = your-admin-password
-BREVO_SMTP_HOST = smtp-relay.brevo.com
-BREVO_SMTP_PORT = 587
-BREVO_SMTP_USER = your-brevo-smtp-user
-BREVO_SMTP_PASS = your-brevo-smtp-password
-BREVO_FROM_EMAIL = your-from-email@example.com
-BREVO_FROM_NAME = DebtCollectionServiceUs
-BREVO_REPLY_TO = your-reply-to@example.com
+DASHBOARD_URL = https://payment-dashboard-web.onrender.com/dashboard/
 NODE_ENV = production
 ```
+
+Important:
+- The backend now uses Nodemailer only.
+- Admin emails are short notifications, not full payment dumps.
 
 5. **Wait for Deployment**
    - Render will auto-deploy
@@ -203,8 +204,8 @@ curl -X POST https://your-render-api.onrender.com/api/login \
 - Backend needs CORS headers (already configured)
 
 ### Emails not sending
-- Check admin email in env variables
-- Check Brevo credentials are correct
+- Check `EMAIL_USER` / `EMAIL_PASS`
+- Confirm SMTP host/port values
 - Look at backend logs for email errors
 
 ### "Cannot GET" errors
@@ -222,7 +223,7 @@ curl -X POST https://your-render-api.onrender.com/api/login \
 
 ⚠️ **Email Delivery**:
 - First test with your own email
-- Verify Brevo SMTP settings
+- Verify SMTP settings
 - Check spam folder
 
 ⚠️ **HTTPS Only**:

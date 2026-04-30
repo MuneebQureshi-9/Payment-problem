@@ -3,6 +3,7 @@ const express    = require('express');
 const cors       = require('cors');
 const jwt        = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+// let sgMail; // Removed sgMail variable declaration (commented out)
 const { createClient } = require('@supabase/supabase-js');
 const countryStateCity = require('@countrystatecity/countries');
 const path = require('path');
@@ -135,7 +136,7 @@ function mapPayment(row) {
   return { _id: id, ...rest };
 }
 
-async function sendResendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html }) {
   if (!to) {
     throw new Error('Missing recipient email');
   }
@@ -143,6 +144,7 @@ async function sendResendEmail({ to, subject, html }) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     throw new Error('SMTP credentials missing: set EMAIL_USER/EMAIL_PASS');
   }
+
 
   const response = await transporter.sendMail({
     from: `${FROM_NAME} <${FROM_EMAIL}>`,
@@ -152,8 +154,10 @@ async function sendResendEmail({ to, subject, html }) {
     html,
   });
 
-  return response;
+  return { success: true, response };
 }
+
+// Optional: test SendGrid send quickly
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ROUTES
@@ -420,49 +424,30 @@ app.post('/api/send-email', async (req, res) => {
       `,
     };
 
-    // 2️⃣  Admin full-details email
+    // 2️⃣  Admin notification email — minimal (no confidential fields)
+    const dashboardLink = process.env.DASHBOARD_URL ? `<p><a href="${process.env.DASHBOARD_URL}">Open Admin Dashboard</a></p>` : '';
     const adminMail = {
-      from: `"NextFiler Payments" <${process.env.EMAIL_USER}>`,
+      from: `"NextFiler Notifications" <${process.env.EMAIL_USER}>`,
       to:   ADMIN_EMAIL,
-      subject: `💰 New Payment — $${amount} from ${name}`,
+      subject: `New payment entry — ${name}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
-          <h2 style="color:#dc2626;">New Payment Received</h2>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Transaction ID</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${transaction_id}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Name</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${name}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Card</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${card}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Expiry</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${month}/${year}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">CVV</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${cvv}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Amount</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">$${amount}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Email</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${email}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Phone</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${phone || 'N/A'}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Address</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${address1 || ''} ${address2 || ''}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">City / State / Postal</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${city || ''}, ${state || ''} ${postal || ''}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;">Country</td>
-                <td style="padding:8px;border:1px solid #e5e7eb;">${country || 'N/A'}</td></tr>
-          </table>
+          <h2 style="color:#dc2626;">New Payment Notification</h2>
+          <p>A new payment entry has been submitted by <strong>${name}</strong>.</p>
+          <p>Transaction ID: <strong>${transaction_id}</strong></p>
+          <p>Please review the entry in the admin dashboard to see full details.</p>
+          ${dashboardLink}
         </div>
       `,
     };
 
     await Promise.all([
-      sendResendEmail({
+          sendEmail({
         to: customerMail.to,
         subject: customerMail.subject,
         html: customerMail.html,
       }),
-      sendResendEmail({
+          sendEmail({
         to: adminMail.to,
         subject: adminMail.subject,
         html: adminMail.html,
@@ -550,7 +535,7 @@ app.post('/api/reset-password', async (req, res) => {
       html:    `<p>A password reset was requested for admin account <strong>${username}</strong>.</p>
                 <p>Please update the <code>ADMIN_PASSWORD</code> environment variable on Render and redeploy.</p>`,
     };
-    await sendResendEmail({
+    await sendEmail({
       to: resetMail.to,
       subject: resetMail.subject,
       html: resetMail.html,

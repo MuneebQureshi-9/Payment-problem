@@ -7,7 +7,7 @@ const API_CONFIG = {
   development: 'http://localhost:3001',
 
   // Production - Render backend URL
-  production: 'https://payment-problem.onrender.com'
+  production: 'https://payment-dashboard-api.onrender.com'
 };
 
 // Detect environment (simple check - improve as needed)

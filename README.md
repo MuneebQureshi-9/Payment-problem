@@ -50,13 +50,14 @@ payment-dashboard/
 
 ## Environment Variables (Backend)
 
-Get these from `.env` and add to Render:
+Add these to Render:
 
 ```
 SUPABASE_URL, SUPABASE_KEY
 EMAIL_USER, EMAIL_PASS
+SMTP_HOST, SMTP_PORT, SMTP_SECURE
 ADMIN_EMAIL, JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD
-BREVO_SMTP_* (all BREVO variables)
+DASHBOARD_URL
 ```
 
 ## Testing
