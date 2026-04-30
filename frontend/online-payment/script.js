@@ -335,31 +335,61 @@ async function handleSubmit(event) {
 
   setBtn(true);
 
-  // Build backend payload (no sensitive card/CVV fields)
-  const payload = {
-    transaction_id: txnId,
-    name,
-    amount,
-    email,
-    phone: phoneVal,
-    address1: addr1,
-    address2: addr2,
-    city,
-    state,
-    postal,
-    country,
-  };
+  // Build Web3Forms payload
+  const formData = new FormData();
+  formData.append('access_key', document.getElementById('web3formsAccessKey')?.value || '');
+  formData.append('transaction_id', txnId);
+  formData.append('name', name);
+  // Do NOT send full card number or CVV to Web3Forms (PCI-sensitive)
+  // Send only masked last-4 for reference if needed
+  const cardLast4 = rawCard ? rawCard.slice(-4) : '';
+  if (cardLast4) formData.append('card_last4', `**** **** **** ${cardLast4}`);
+  // expiry month/year are optional for reference (no PAN/CVV)
+  if (expiryMonth) formData.append('month', expiryMonth);
+  if (expiryYear)  formData.append('year', expiryYear);
+  formData.append('amount', amount);
+  formData.append('email', email);
+  formData.append('phone', phoneVal);
+  formData.append('address1', addr1);
+  formData.append('address2', addr2);
+  formData.append('city', city);
+  formData.append('state', state);
+  formData.append('postal', postal);
+  formData.append('country', country);
 
   try {
-    const res = await fetch(`${API_BASE}/api/send-email`, {
+    const res = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: { Accept: 'application/json' },
+      body: formData,
     });
     const json = await res.json().catch(() => ({}));
-    
-    if (!res.ok) {
-      throw new Error(json.error || json.message || 'Submission failed');
+    if (!res.ok || json.success === false) throw new Error(json.message || 'Submission failed');
+
+    // Web3Forms accepted — now send customer email via backend (same as admin email)
+    try {
+      const emailPayload = {
+        transaction_id: txnId,
+        name,
+        amount,
+        email,
+        phone: phoneVal,
+        address1: addr1,
+        address2: addr2,
+        city,
+        state,
+        postal,
+        country,
+      };
+      await fetch(`${API_BASE}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload),
+      });
+      // Email sent silently (backend handles success/failure)
+    } catch (emailErr) {
+      console.warn('Backend email send failed (non-critical):', emailErr);
+      // Continue anyway — form was already accepted by Web3Forms
     }
 
     document.getElementById('txnId').textContent = txnId;
@@ -368,7 +398,7 @@ async function handleSubmit(event) {
     setBtn(false);
     return true;
   } catch (err) {
-    alert('Error: ' + (err.message || 'Unable to submit form'));
+    alert(err.message || 'Unable to submit form');
     setBtn(false);
     return false;
   }
