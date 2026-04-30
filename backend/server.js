@@ -13,12 +13,14 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 app.use(cors({
-  origin: [
-    'https://debtcollectionservice.us',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow all origins dynamically
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200
 }));
 
 app.use((req, res, next) => {
