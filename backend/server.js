@@ -12,46 +12,14 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
-
-// Normalize origins to hostnames for flexible matching (strip protocol)
-const allowedHosts = allowedOrigins.map(o => {
-  try {
-    const u = new URL(o.includes('://') ? o : `https://${o}`);
-    return u.hostname;
-  } catch (e) {
-    return o;
-  }
-});
-
 app.use(cors({
-  origin(origin, callback) {
-    // Allow same-origin or no-origin (curl, server-to-server)
-    if (!origin || allowedOrigins.length === 0) return callback(null, true);
-
-    try {
-      const originHost = new URL(origin).hostname;
-      if (allowedOrigins.includes(origin) || allowedHosts.includes(originHost) || allowedOrigins.includes('*')) {
-        return callback(null, true);
-      }
-    } catch (err) {
-      // If origin is malformed, deny below
-    }
-
-    console.warn('CORS denied for origin:', origin);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true,
-  optionsSuccessStatus: 200,
+  origin: [
+    'https://debtcollectionservice.us',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
+  credentials: true
 }));
-
-// Ensure preflight requests are handled
-app.options('*', (req, res) => res.sendStatus(200));
 
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
