@@ -225,49 +225,6 @@ function validatePhoneLive() {
   }
 }
 
-function openDropdown() {
-  const btn  = document.getElementById('phoneFlag');
-  const list = document.getElementById('phoneDropdown');
-  const rect = btn.getBoundingClientRect();
-  list.style.position = 'fixed';
-  list.style.top      = (rect.bottom + 4) + 'px';
-  list.style.left     = rect.left + 'px';
-  list.style.display  = 'block';
-  dropdownOpen = true;
-}
-
-function closeDropdown() {
-  document.getElementById('phoneDropdown').style.display = 'none';
-  dropdownOpen = false;
-}
-
-function getCardType(v) {
-  if (/^4/.test(v))                       return '💳 VISA';
-  if (/^5[1-5]/.test(v))                  return '💳 Mastercard';
-  if (/^3[47]/.test(v))                   return '💳 Amex';
-  if (/^6011|^64[4-9]|^65/.test(v))       return '💳 Discover';
-  return '';
-}
-
-function formatCardNumber(input) {
-  let v = input.value.replace(/\D/g, '').substring(0, 16);
-  input.value = v.replace(/(.{4})/g, '$1 ').trim();
-
-  const type    = getCardType(v);
-  const badge   = document.getElementById('cardTypeBadge');
-  const validEl = document.getElementById('cardValidIcon');
-
-  if (type) {
-    badge.textContent = type;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  validEl.style.display = 'none';
-  clearErr('cardErr');
-}
-
 function generateTxnId(len = 20) {
   const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let r = '';
