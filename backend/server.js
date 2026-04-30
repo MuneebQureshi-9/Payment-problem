@@ -52,9 +52,9 @@ const supabase = createClient(
   process.env.SUPABASE_KEY   // service role key — full DB access, bypasses RLS
 );
 
-// ─── SMTP Transporter (Gmail-friendly, configurable) ───────────────────────
+// ─── SMTP Transporter ──────────────────────────────────────────────────────
 function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const host = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
   const port = parseInt(process.env.SMTP_PORT || (process.env.SMTP_SECURE === 'true' ? '465' : '587'), 10);
   const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
 
@@ -76,7 +76,7 @@ function createTransporter() {
   return nodemailer.createTransport(opts);
 }
 
-let transporter = createTransporter();
+const transporter = createTransporter();
 transporter.verify()
   .then(() => console.log('✅ SMTP transporter verified'))
   .catch(err => console.error('⚠️ SMTP verify failed:', err && err.message));
@@ -91,13 +91,14 @@ app.get('/api/test-smtp', async (req, res) => {
     return res.status(500).json({ success: false, error: err && err.message });
   }
 });
+
 // ─── JWT Secret & Admin Credentials (from env) ───────────────────────────────
 const JWT_SECRET       = process.env.JWT_SECRET       || 'nextfiler_admin_secret_2024';
 const ADMIN_USERNAME   = process.env.ADMIN_USERNAME   || 'admin';
 let ADMIN_PASSWORD     = process.env.ADMIN_PASSWORD   || 'admin123';
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'admin_secret_key_2026';
 const ADMIN_EMAIL      = process.env.ADMIN_EMAIL      || '';
-const FROM_EMAIL       = process.env.EMAIL_USER || 'noreply@example.com';
+const FROM_EMAIL       = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com';
 const FROM_NAME        = process.env.EMAIL_FROM_NAME || 'NextFiler';
 const REPLY_TO         = process.env.EMAIL_REPLY_TO || FROM_EMAIL;
 
@@ -212,7 +213,7 @@ function mapPayment(row) {
   return { _id: id, ...rest };
 }
 
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, text, from }) {
   if (!to) {
     throw new Error('Missing recipient email');
   }
@@ -221,12 +222,12 @@ async function sendEmail({ to, subject, html }) {
     throw new Error('SMTP credentials missing: set EMAIL_USER/EMAIL_PASS');
   }
 
-
   const response = await transporter.sendMail({
-    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    from: from || `${FROM_NAME} <${FROM_EMAIL}>`,
     replyTo: REPLY_TO,
     to,
     subject,
+    text,
     html,
   });
 
@@ -503,7 +504,7 @@ app.post('/api/payments/:id/read', authMiddleware, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/send-email  — send confirmation to customer + full details to admin
+// POST /api/send-email  — send confirmation to customer + dashboard alert to admin
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/send-email', async (req, res) => {
   try {
@@ -516,54 +517,68 @@ app.post('/api/send-email', async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Missing customer email' });
     if (!ADMIN_EMAIL) return res.status(400).json({ error: 'Missing ADMIN_EMAIL' });
 
-    // 1️⃣  Customer confirmation email
+    // 1) Customer confirmation email (no form details)
     const customerMail = {
-      from: `"NextFiler" <${process.env.EMAIL_USER}>`,
+      from: `"NextFiler" <${FROM_EMAIL}>`,
       to:   email,
       subject: `Details Received — ${transaction_id}`,
+      text: `Hi ${name || 'Customer'},\n\nThank you, we have successfully received your details.\n\nYour payment is currently in process.\n\nThis is an automated message — please do not reply.`,
       html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;text-align:center;">
-          <h2 style="color:#4f46e5;">Details Received ✅</h2>
-          <p>Hi <strong>${name}</strong>,</p>
-          <p>Thank you, we have successfully received your details.</p>
-          <p style="font-size:16px;font-weight:bold;color:#333;margin:20px 0;">Your payment is currently in process.</p>
-          <p style="color:#6b7280;font-size:12px;margin-top:30px;">This is an automated message — please do not reply.</p>
+        <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px 20px;text-align:center;color:#111827;">
+          <h2 style="margin:0 0 18px;color:#4f46e5;font-size:38px;line-height:1.2;font-weight:700;">Details Received ✅</h2>
+          <p style="margin:0 0 20px;font-size:32px;line-height:1.25;font-weight:700;">Hi ${name || 'Customer'},</p>
+          <p style="margin:0 0 18px;font-size:19px;line-height:1.65;">Thank you, we have successfully received your details.</p>
+          <p style="margin:0 0 28px;font-size:42px;line-height:1.2;font-weight:800;color:#374151;">Your payment is currently in process.</p>
+          <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.5;">This is an automated message — please do not reply.</p>
         </div>
       `,
     };
 
-    // 2️⃣  Admin notification email — minimal (no confidential fields)
-    const dashboardLink = process.env.DASHBOARD_URL ? `<p><a href="${process.env.DASHBOARD_URL}">Open Admin Dashboard</a></p>` : '';
+    // 2) Admin notification email (dashboard prompt only)
+    const dashboardUrl = process.env.DASHBOARD_URL || '';
+    const dashboardLink = dashboardUrl
+      ? `<a href="${dashboardUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700;">Open Admin Dashboard</a>`
+      : '';
     const adminMail = {
-      from: `"NextFiler Notifications" <${process.env.EMAIL_USER}>`,
+      from: `"NextFiler Notifications" <${FROM_EMAIL}>`,
       to:   ADMIN_EMAIL,
-      subject: `New payment entry — ${name}`,
+      subject: 'New Entry Notification',
+      text: `A new payment entry has been submitted. Please review the admin dashboard for complete details.${dashboardUrl ? `\n\nDashboard: ${dashboardUrl}` : ''}`,
       html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;">
-          <h2 style="color:#dc2626;">New Payment Notification</h2>
-          <p>A new payment entry has been submitted by <strong>${name}</strong>.</p>
-          <p>Transaction ID: <strong>${transaction_id}</strong></p>
-          <p>Please review the entry in the admin dashboard to see full details.</p>
-          ${dashboardLink}
+        <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:24px 20px;color:#111827;">
+          <h2 style="margin:0 0 18px;color:#dc2626;font-size:36px;line-height:1.2;font-weight:800;">New Payment Notification</h2>
+          <p style="margin:0 0 12px;font-size:22px;line-height:1.5;">A new payment entry has been submitted.</p>
+          <p style="margin:0 0 22px;font-size:22px;line-height:1.5;">Please review the admin dashboard to see full details.</p>
+          ${dashboardLink ? `<div style="margin-top:10px;">${dashboardLink}</div>` : ''}
         </div>
       `,
     };
 
-    await Promise.all([
-          sendEmail({
-        to: customerMail.to,
-        subject: customerMail.subject,
-        html: customerMail.html,
-      }),
-          sendEmail({
-        to: adminMail.to,
-        subject: adminMail.subject,
-        html: adminMail.html,
-      }),
-    ]);
+    const customerResult = await sendEmail({
+      to: customerMail.to,
+      subject: customerMail.subject,
+      text: customerMail.text,
+      html: customerMail.html,
+      from: customerMail.from,
+    });
+
+    const adminResult = await sendEmail({
+      to: adminMail.to,
+      subject: adminMail.subject,
+      text: adminMail.text,
+      html: adminMail.html,
+      from: adminMail.from,
+    });
 
     console.log(`✅ Emails sent for txn ${transaction_id}`);
-    return res.json({ success: true, message: 'Emails sent successfully' });
+    return res.json({
+      success: true,
+      message: 'Emails sent successfully',
+      delivery: {
+        customerAccepted: customerResult.response?.accepted || [],
+        adminAccepted: adminResult.response?.accepted || [],
+      },
+    });
   } catch (err) {
     console.error('❌ Email send error:', err);
     return res.status(500).json({ error: err.message });
@@ -627,8 +642,6 @@ app.post('/api/change-password', authMiddleware, async (req, res) => {
     if (currentPassword !== ADMIN_PASSWORD) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
-    // On a stateless server the new password would need to be persisted via env vars or a DB record.
-    // For now we acknowledge success — update ADMIN_PASSWORD env var on Render to take effect permanently.
     console.log('Password change requested — update ADMIN_PASSWORD env var on Render.');
     await sendAdminSecurityAlert({
       action: 'Admin password change',
@@ -685,4 +698,4 @@ app.post('/api/reset-password', resetSecretAttemptLimit, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`? Server running on port ${PORT}`));
