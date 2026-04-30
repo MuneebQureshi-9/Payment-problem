@@ -122,6 +122,7 @@ const countryAliasMap = {
 };
 
 let countryCodeCache = null;
+let statesCache = {}; // Cache states results to avoid timeouts
 
 async function getCountryIsoCode(countryName) {
   if (!countryName) return null;
@@ -425,25 +426,46 @@ app.get('/api/payments/stats', authMiddleware, async (req, res) => {
 app.get('/api/states', async (req, res) => {
   try {
     const { country } = req.query;
-    const countryIso = await getCountryIsoCode(country);
-
-    if (!countryIso) {
+    
+    if (!country) {
       return res.json({ states: [] });
     }
 
-    const states = await getStatesOfCountry(countryIso);
+    // Check cache first
+    if (statesCache[country]) {
+      console.log(`✓ States for "${country}" returned from cache`);
+      return res.json(statesCache[country]);
+    }
 
-    return res.json({
+    console.log(`Fetching states for: ${country}`);
+    const countryIso = await getCountryIsoCode(country);
+
+    if (!countryIso) {
+      const cacheResult = { country, countryIso: null, states: [] };
+      statesCache[country] = cacheResult;
+      return res.json(cacheResult);
+    }
+
+    const states = await getStatesOfCountry(countryIso);
+    const statesResult = (states || []).map(state => ({
+      name: state.name,
+      iso2: state.iso2,
+    }));
+
+    const result = {
       country,
       countryIso,
-      states: (states || []).map(state => ({
-        name: state.name,
-        iso2: state.iso2,
-      })),
-    });
+      states: statesResult,
+    };
+
+    // Cache the result
+    statesCache[country] = result;
+    console.log(`✓ Cached ${statesResult.length} states for "${country}"`);
+
+    return res.json(result);
   } catch (err) {
-    console.error('GET /api/states error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('GET /api/states error:', err && err.message);
+    return res.json({ country: req.query.country, states: [] });
   }
 });
 

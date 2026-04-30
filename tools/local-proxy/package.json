@@ -1,0 +1,12 @@
+{
+  "name": "web3forms-local-proxy",
+  "version": "1.0.0",
+  "description": "Local MITM proxy to strip sensitive fields when testing Web3Forms locally",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "dependencies": {
+    "http-mitm-proxy": "^0.8.1"
+  }
+}

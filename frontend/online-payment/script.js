@@ -16,8 +16,18 @@ async function updateStates() {
   stateSelect.innerHTML = '<option value="">Loading states...</option>';
 
   try {
-    const response = await fetch(`${API_BASE}/api/states?country=${encodeURIComponent(selectedCountry)}`);
+    console.log('Fetching states for country:', selectedCountry);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+    const response = await fetch(`${API_BASE}/api/states?country=${encodeURIComponent(selectedCountry)}`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    console.log('States API response status:', response.status);
     const data = await response.json();
+    console.log('States data received:', data);
 
     if (currentToken !== stateLoadToken) return;
 
@@ -39,12 +49,13 @@ async function updateStates() {
       option.textContent = 'No states available';
       stateSelect.appendChild(option);
     }
+    console.log('States loaded successfully:', states.length, 'states');
   } catch (error) {
     if (currentToken !== stateLoadToken) return;
 
+    console.error('States API error:', error && error.message);
     stateSelect.disabled = false;
     stateSelect.innerHTML = '<option value="">Select State / Province</option>';
-    console.error('Failed to load states:', error);
   }
 }
 

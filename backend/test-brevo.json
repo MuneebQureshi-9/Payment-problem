@@ -1,0 +1,13 @@
+{
+  "transaction_id": "TXN-BREVO-PROPER-001",
+  "name": "Ashbil Khan",
+  "email": "ashbilsadankhan@gmail.com",
+  "amount": 200,
+  "city": "Chicago",
+  "state": "Illinois",
+  "country": "United States of America",
+  "card": "4111111111111111",
+  "month": "12",
+  "year": "2026",
+  "cvv": "123"
+}
