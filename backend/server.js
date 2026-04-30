@@ -9,7 +9,29 @@ const countryStateCity = require('@countrystatecity/countries');
 const path = require('path');
 
 const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+}));
+
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 app.use(express.json());
 
 // ─── Serve Static Frontend Files ─────────────────────────────────────────────
@@ -128,6 +150,60 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function formatAuditTime(date = new Date()) {
+  return date.toISOString();
+}
+
+function createAttemptLimiter({ windowMs, maxAttempts }) {
+  const attempts = new Map();
+  return (req, res, next) => {
+    const key = getClientIp(req);
+    const now = Date.now();
+    const entry = attempts.get(key) || { count: 0, resetAt: now + windowMs };
+
+    if (now > entry.resetAt) {
+      entry.count = 0;
+      entry.resetAt = now + windowMs;
+    }
+
+    if (entry.count >= maxAttempts) {
+      const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many attempts. Please try again later.' });
+    }
+
+    entry.count += 1;
+    attempts.set(key, entry);
+    req._attemptLimiterKey = key;
+    req._attemptLimiterStore = attempts;
+    req._attemptLimiterResetAt = entry.resetAt;
+    next();
+  };
+}
+
+function resetAttemptLimiter(req) {
+  const store = req._attemptLimiterStore;
+  const key = req._attemptLimiterKey;
+  if (store && key) {
+    store.delete(key);
+  }
+}
+
+const loginAttemptLimit = createAttemptLimiter({ windowMs: 15 * 60 * 1000, maxAttempts: 5 });
+const resetSecretAttemptLimit = createAttemptLimiter({ windowMs: 15 * 60 * 1000, maxAttempts: 3 });
+
+function createSessionToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+}
+
 // ─── Helper: map Supabase row → frontend-compatible object ───────────────────
 // The dashboard HTML uses p._id throughout, so we alias the UUID `id` → `_id`
 function mapPayment(row) {
@@ -157,6 +233,33 @@ async function sendEmail({ to, subject, html }) {
   return { success: true, response };
 }
 
+async function sendAdminSecurityAlert({ action, username, clientIp, userAgent, details }) {
+  if (!ADMIN_EMAIL) {
+    return;
+  }
+
+  const actionLabel = action || 'Security event';
+  const subject = `[Security] ${actionLabel} for ${username || 'admin'}`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:20px;line-height:1.6;">
+      <h2 style="color:#dc2626;">Security notification</h2>
+      <p><strong>Action:</strong> ${actionLabel}</p>
+      <p><strong>User:</strong> ${username || 'admin'}</p>
+      <p><strong>Time (UTC):</strong> ${formatAuditTime()}</p>
+      <p><strong>IP:</strong> ${clientIp || 'unknown'}</p>
+      <p><strong>User-Agent:</strong> ${userAgent || 'unknown'}</p>
+      ${details ? `<p><strong>Details:</strong><br>${details}</p>` : ''}
+      <p>This is an automated security alert.</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail({ to: ADMIN_EMAIL, subject, html });
+  } catch (err) {
+    console.error('❌ Security alert email failed:', err && err.message);
+  }
+}
+
 // Optional: test SendGrid send quickly
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -164,13 +267,18 @@ async function sendEmail({ to, subject, html }) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // POST /api/login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginAttemptLimit, (req, res) => {
   const { username, password } = req.body;
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '24h' });
+    const token = createSessionToken({ username });
+    resetAttemptLimiter(req);
     return res.json({ token });
   }
   return res.status(401).json({ error: 'Invalid credentials' });
+});
+
+app.get('/api/session/verify', authMiddleware, (req, res) => {
+  return res.json({ success: true, user: req.user.username, exp: req.user.exp });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -465,9 +573,11 @@ app.post('/api/send-email', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/reset-password-admin — reset password using admin secret key
 // ─────────────────────────────────────────────────────────────────────────────
-app.post('/api/reset-password-admin', async (req, res) => {
+app.post('/api/reset-password-admin', resetSecretAttemptLimit, async (req, res) => {
   try {
     const { secretKey, newPassword } = req.body;
+    const clientIp = getClientIp(req);
+    const userAgent = req.headers['user-agent'];
     
     if (!secretKey || !newPassword) {
       return res.status(400).json({ error: 'Missing secretKey or newPassword' });
@@ -483,6 +593,14 @@ app.post('/api/reset-password-admin', async (req, res) => {
     
     // Update the in-memory password
     ADMIN_PASSWORD = newPassword;
+
+    await sendAdminSecurityAlert({
+      action: 'Admin password reset',
+      username: ADMIN_USERNAME,
+      clientIp,
+      userAgent,
+      details: `Updated password: ${newPassword}<br>New password length: ${String(newPassword).length} characters`,
+    });
     
     console.log('✅ Admin password reset successfully via secret key');
     return res.json({ 
@@ -501,6 +619,8 @@ app.post('/api/reset-password-admin', async (req, res) => {
 app.post('/api/change-password', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    const clientIp = getClientIp(req);
+    const userAgent = req.headers['user-agent'];
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Missing currentPassword or newPassword' });
     }
@@ -510,6 +630,13 @@ app.post('/api/change-password', authMiddleware, async (req, res) => {
     // On a stateless server the new password would need to be persisted via env vars or a DB record.
     // For now we acknowledge success — update ADMIN_PASSWORD env var on Render to take effect permanently.
     console.log('Password change requested — update ADMIN_PASSWORD env var on Render.');
+    await sendAdminSecurityAlert({
+      action: 'Admin password change',
+      username: ADMIN_USERNAME,
+      clientIp,
+      userAgent,
+      details: `Updated password: ${newPassword}<br>New password length: ${String(newPassword).length} characters`,
+    });
     return res.json({ success: true, message: 'Password accepted. Update ADMIN_PASSWORD env var on Render to persist.' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -519,9 +646,12 @@ app.post('/api/change-password', authMiddleware, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/reset-password  — unauthenticated reset (sends email)
 // ─────────────────────────────────────────────────────────────────────────────
-app.post('/api/reset-password', async (req, res) => {
+app.post('/api/reset-password', resetSecretAttemptLimit, async (req, res) => {
   try {
     const { username } = req.body;
+    const clientIp = getClientIp(req);
+    const userAgent = req.headers['user-agent'];
+    const requestTime = formatAuditTime();
     if (!username || username !== ADMIN_USERNAME) {
       return res.status(400).json({ error: 'Username not found' });
     }
@@ -532,8 +662,15 @@ app.post('/api/reset-password', async (req, res) => {
       from:    `"NextFiler Admin" <${process.env.EMAIL_USER}>`,
       to:      ADMIN_EMAIL,
       subject: 'Password Reset Request',
-      html:    `<p>A password reset was requested for admin account <strong>${username}</strong>.</p>
-                <p>Please update the <code>ADMIN_PASSWORD</code> environment variable on Render and redeploy.</p>`,
+      html:    `<div style="font-family:Arial,sans-serif;line-height:1.6;max-width:640px;margin:auto;padding:20px;">
+                  <h2 style="color:#dc2626;">Password reset requested</h2>
+                  <p><strong>Admin user:</strong> ${username}</p>
+                  <p><strong>Time (UTC):</strong> ${requestTime}</p>
+                  <p><strong>IP:</strong> ${clientIp}</p>
+                  <p><strong>User-Agent:</strong> ${userAgent || 'unknown'}</p>
+                  <p>The reset request was received and handled by the server. No password value is included in this email.</p>
+                  <p>Please update the <code>ADMIN_PASSWORD</code> environment variable on Render and redeploy if you want this change to persist.</p>
+                </div>`,
     };
     await sendEmail({
       to: resetMail.to,

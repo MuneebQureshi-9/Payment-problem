@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Admin Dashboard — Payment Records</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -904,10 +907,62 @@
       }
       return 'https://payment-problem.onrender.com';
     })();
-    let token = localStorage.getItem('dash_token') || '';
+    const TOKEN_KEY = 'dash_token';
+    let token = sessionStorage.getItem(TOKEN_KEY) || '';
     let currentPage = 1;
     let searchQuery = '';
     let searchTimer;
+    let inactivityTimer = null;
+    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+
+    function persistToken(value) {
+      token = value || '';
+      if (token) sessionStorage.setItem(TOKEN_KEY, token);
+      else sessionStorage.removeItem(TOKEN_KEY);
+    }
+
+    function resetInactivityTimer() {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      if (!token) return;
+      inactivityTimer = setTimeout(() => {
+        alert('Session expired. Please sign in again.');
+        doLogout();
+      }, INACTIVITY_TIMEOUT_MS);
+    }
+
+    function bindActivityTracking() {
+      ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(evt => {
+        document.addEventListener(evt, () => {
+          if (token) resetInactivityTimer();
+        }, { passive: true });
+      });
+    }
+
+    function isJwtExpired(jwtToken) {
+      try {
+        const payload = JSON.parse(atob(jwtToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return !payload.exp || (Date.now() / 1000) >= payload.exp;
+      } catch {
+        return true;
+      }
+    }
+
+    async function verifySession() {
+      if (!token || isJwtExpired(token)) {
+        doLogout();
+        return false;
+      }
+      try {
+        const r = await fetch(`${API}/api/session/verify`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!r.ok) throw new Error('Invalid session');
+        return true;
+      } catch {
+        doLogout();
+        return false;
+      }
+    }
 
     async function doLogin() {
       const u = document.getElementById('loginUser').value.trim();
@@ -924,8 +979,7 @@
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Login failed');
-        token = d.token;
-        localStorage.setItem('dash_token', token);
+        persistToken(d.token);
         showDashboard();
       } catch (e) {
         err.textContent = e.message;
@@ -934,7 +988,8 @@
     }
 
     function doLogout() {
-      token = ''; localStorage.removeItem('dash_token');
+      persistToken('');
+      if (inactivityTimer) clearTimeout(inactivityTimer);
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('loginScreen').style.display = 'flex';
     }
@@ -985,6 +1040,7 @@
     function showDashboard() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
+      resetInactivityTimer();
       loadPayments();
     }
 
@@ -1185,8 +1241,14 @@ function copyAll(btn, text) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    if (token) { showDashboard(); }
-    else { document.getElementById('loginScreen').style.display = 'flex'; }
+    bindActivityTracking();
+    (async () => {
+      if (token && await verifySession()) {
+        showDashboard();
+      } else {
+        document.getElementById('loginScreen').style.display = 'flex';
+      }
+    })();
   </script>
 </body>
 

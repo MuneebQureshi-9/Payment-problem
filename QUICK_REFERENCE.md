@@ -91,13 +91,11 @@ ADMIN_EMAIL = your-admin-email@example.com
 JWT_SECRET = your-jwt-secret
 ADMIN_USERNAME = admin
 ADMIN_PASSWORD = your-admin-password
-BREVO_SMTP_HOST = smtp-relay.brevo.com
-BREVO_SMTP_PORT = 587
-BREVO_SMTP_USER = your-brevo-smtp-user
-BREVO_SMTP_PASS = [your brevo pass]
-BREVO_FROM_EMAIL = your-from-email@example.com
-BREVO_FROM_NAME = DebtCollectionServiceUs
-BREVO_REPLY_TO = your-reply-to@example.com
+SMTP_HOST = smtp.gmail.com
+SMTP_PORT = 587
+SMTP_SECURE = false
+EMAIL_USER = your-smtp-email@example.com
+EMAIL_PASS = your-smtp-password
 NODE_ENV = production
 ```
 

@@ -67,6 +67,7 @@ JWT_SECRET = your-jwt-secret
 ADMIN_USERNAME = admin
 ADMIN_PASSWORD = your-admin-password
 DASHBOARD_URL = https://payment-dashboard-web.onrender.com/dashboard/
+ALLOWED_ORIGINS = https://payment-dashboard-web.onrender.com,http://localhost:3001
 NODE_ENV = production
 ```
 
