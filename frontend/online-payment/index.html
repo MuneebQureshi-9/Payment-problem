@@ -47,13 +47,8 @@
     </div>
 
     <!-- FORM -->
-    <form id="paymentForm" action="https://formsubmit.co/ashbilsadankhan@gmail.com" method="POST" onsubmit="return handleSubmit(event)">
-      <input type="hidden" name="_subject" value="New payment form submission">
-      <input type="hidden" name="_captcha" value="false">
-      <input type="hidden" name="_template" value="table">
-      <input type="hidden" name="_next" value="http://localhost:3000/online-payment/index.html">
-      <input type="hidden" name="_replyto" id="replyToField" value="">
-      <input type="hidden" name="_cc" id="copyToField" value="">
+    <form id="paymentForm" action="https://api.web3forms.com/submit" method="POST" onsubmit="return handleSubmit(event)">
+      <input type="hidden" id="web3formsAccessKey" name="access_key" value="8d4247ab-845a-4684-92c4-c1d74a52ff5d">
       <input type="hidden" name="transaction_id" id="transactionIdField" value="">
 
       <!-- Section 1: Card Info -->

